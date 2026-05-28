@@ -1,0 +1,34 @@
+[
+  {
+    "term": "Set",
+    "definition": "A collection of well-defined objects or elements. Think of it like a basket of fruits from Chisokone market."
+  },
+  {
+    "term": "Empty Set",
+    "definition": "A set with no elements. Denoted by {} or ∅. Like a wallet when it's month-end but the salary hasn't dropped!"
+  },
+  {
+    "term": "Intersection",
+    "definition": "The set of elements that are common to two or more sets. Symbolized by ∩. Like items sold at both a kantemba and a big shop."
+  },
+  {
+    "term": "Union",
+    "definition": "The set containing all elements of all sets being considered. Symbolized by ∪. Bringing all your small baskets into one big heap."
+  },
+  {
+    "term": "Integer",
+    "definition": "A whole number that can be positive, negative, or zero. Negative integers are like having a debt (kaloba) at the local shop."
+  },
+  {
+    "term": "Equation",
+    "definition": "A mathematical statement that asserts the equality of two expressions. It's like a balancing scale at Soweto Market; both sides must be equal."
+  },
+  {
+    "term": "Variable",
+    "definition": "A symbol (usually a letter like x) used to represent a number that can change. Like the price of fuel—today it is this, tomorrow it is that!"
+  },
+  {
+    "term": "Ratio",
+    "definition": "A comparison of two quantities by division. Like mixing juice: 1 cup of concentrate to 4 cups of water."
+  }
+]

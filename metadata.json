@@ -1,0 +1,16 @@
+{
+  "name": "Bulela",
+  "description": "Bulela: An offline-first Grade 8 & 9 (Form 1 & 2) Zambian Math tutor for the Gemma 4 Good hackathon. Powered by localized AI, it provides interactive, persona-driven lessons and cultural analogies without requiring expensive internet data.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ],
+  "majorCapabilities": [
+    "Offline-first PWA architecture",
+    "Zambian Grade 8/9 Math Curriculum alignment",
+    "Localized Ba Yama Persona (Nyanja/Bemba/English)",
+    "RAG-enhanced textbook groundings",
+    "Gamified progress tracking with localized badges",
+    "Voice and Image multimodal support"
+  ]
+}
