@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface MathCanvasProps {
   onRecognize: (equation: string) => void;
+  onRecognizeImage?: (base64Image: string) => void;
   onClose: () => void;
 }
 
-export default function MathCanvas({ onRecognize, onClose }: MathCanvasProps) {
+export default function MathCanvas({ onRecognize, onRecognizeImage, onClose }: MathCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#1e293b');
@@ -79,12 +80,30 @@ export default function MathCanvas({ onRecognize, onClose }: MathCanvasProps) {
   };
 
   const handleRecognize = () => {
-    // In a real production app, we would send the image or strokes to a Math OCR service.
-    // For this demonstration, we'll ask the student to type what they wrote
-    // OR we can simulate a recognition of a common Grade 9 problem.
-    const mockInput = prompt("Bulela AI is analyzing your handwriting... What equation did you write? (e.g. 2x + 5 = 11)");
-    if (mockInput) {
-      onRecognize(mockInput);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create offscreen canvas to merge drawing with solid white background for high contrast vision OCR
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    ctx.drawImage(canvas, 0, 0);
+
+    const base64Image = exportCanvas.toDataURL('image/jpeg', 0.85);
+
+    if (onRecognizeImage) {
+      onRecognizeImage(base64Image);
+      onClose();
+    } else {
+      const mockInput = prompt("Bulela AI is analyzing your handwriting... What equation did you write? (e.g. 2x + 5 = 11)");
+      if (mockInput) {
+        onRecognize(mockInput);
+      }
     }
   };
 

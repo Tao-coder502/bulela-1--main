@@ -39,6 +39,7 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/data ./data
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/dictionary.json ./
 
 # Create directory for database
 RUN mkdir -p /app/data

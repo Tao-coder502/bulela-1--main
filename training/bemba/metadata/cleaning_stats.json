@@ -1,0 +1,8 @@
+{
+  "raw_records_read": 35140,
+  "dropped_empty_or_null": 0,
+  "dropped_exact_duplicates": 144,
+  "total_dropped": 144,
+  "cleaned_records_retained": 34996,
+  "retention_rate_pct": 99.59
+}

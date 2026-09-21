@@ -12,10 +12,13 @@ import AnalyticsDashboard from './components/AnalyticsDashboard';
 import MathCanvas from './components/MathCanvas';
 import TeacherDashboard from './components/TeacherDashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import JSChart from './components/JSChart';
+import { latexToSpokenText, compressImageBase64 } from './lib/speechUtils';
 
 interface ChatMessage {
   role: 'user' | 'model';
   content: string;
+  image?: string;
 }
 
 interface Topic {
@@ -208,6 +211,7 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
   const [isCanvasOpen, setIsCanvasOpen] = useState(false);
   const [isTeacherDashboardOpen, setIsTeacherDashboardOpen] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [currentlySpeakingIndex, setCurrentlySpeakingIndex] = useState<number | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [isOffline, setIsOffline] = useState(false); // UI fallback trigger
   const [isNetworkOffline, setIsNetworkOffline] = useState(!navigator.onLine); // PWA Offline level
@@ -253,17 +257,33 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        handleSendMessage(undefined, `[IMAGE_UPLOADED] Mwaice, I've just shared a photo of my notebook with you. Can you check my calculation?`, base64String);
+      reader.onloadend = async () => {
+        const rawBase64 = reader.result as string;
+        const compressedBase64 = await compressImageBase64(rawBase64, 1024, 1024, 0.8);
+        handleSendMessage(undefined, `[IMAGE_UPLOADED] Mwaice, I've just shared a photo of my notebook with you. Can you check my calculation?`, compressedBase64);
       };
       reader.readAsDataURL(file);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCameraUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const rawBase64 = reader.result as string;
+        const compressedBase64 = await compressImageBase64(rawBase64, 1024, 1024, 0.8);
+        handleSendMessage(undefined, `[CAMERA_PHOTO] Mwaice, I took a photo of my math problem. Please help me solve it step-by-step!`, compressedBase64);
+      };
+      reader.readAsDataURL(file);
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -431,7 +451,7 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
     let userMessage = customMessage || input.trim();
     if (!userMessage || isLoading) return;
 
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { role: 'user', content: userMessage, image: imageData }]);
     setIsLoading(true);
     setInput('');
 
@@ -534,13 +554,36 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
     }
   };
 
-  const speak = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
+  const speak = (text: string, msgIndex?: number) => {
+    if (!('speechSynthesis' in window)) {
+      alert("Text-to-speech is not supported in this browser.");
+      return;
+    }
+
+    if (isSpeaking && currentlySpeakingIndex === msgIndex) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setCurrentlySpeakingIndex(null);
+      return;
+    }
+
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    const cleanSpokenText = latexToSpokenText(text);
+    if (!cleanSpokenText) return;
+
+    const utterance = new SpeechSynthesisUtterance(cleanSpokenText);
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      if (msgIndex !== undefined) setCurrentlySpeakingIndex(msgIndex);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setCurrentlySpeakingIndex(null);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setCurrentlySpeakingIndex(null);
+    };
     window.speechSynthesis.speak(utterance);
   };
 
@@ -575,16 +618,20 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
     recognition.onerror = (event: any) => {
       setIsListening(false);
       
-      // Handle locale-specific errors by retrying with fallback locale
-      if (event.error === 'not-allowed') {
-        alert("Microphone access was denied. Please allow microphone permission in your browser settings.");
-      } else if (event.error === 'no-speech') {
-        alert("No speech detected. Please try again.");
-      } else if (event.error === 'audio-capture') {
-        alert("No microphone found. Please check your device.");
-      } else if (event.error === 'network') {
-        // Retry with en-US locale for network errors
-        console.warn("Speech recognition network error, retrying with en-US locale");
+      // Handle locale-specific and connectivity issues in an offline-first friendly way
+      const errorStr = String(event.error || '').toLowerCase();
+      
+      if (errorStr === 'not-allowed') {
+        alert("Ba Yama needs microphone permission, mwana! Please allow mic access in your browser settings to speak your question.");
+      } else if (errorStr === 'no-speech') {
+        alert("Iyee! I didn't hear anything. Please speak clearly into your mic and try again!");
+      } else if (errorStr === 'audio-capture') {
+        alert("No microphone found, mwebane! Please double-check your device mic connection.");
+      } else if (errorStr === 'network') {
+        alert("Mwebane, voice input (Web Speech) requires active internet for speech processing. Since Bulela is designed to save data and run offline, if you are offline now, please type your math question or snap a photo of your notebook instead!");
+      } else if (errorStr === 'language-not-supported' || errorStr === 'not-supported') {
+        // Silently fallback to en-US/en-GB if en-ZM is not supported by standard Chrome
+        console.warn("Zambian English locale not supported natively, retrying with en-US...");
         try {
           const fallbackRecognition = new SpeechRecognition();
           fallbackRecognition.lang = 'en-US';
@@ -597,17 +644,23 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
             setIsListening(false);
           };
           
-          fallbackRecognition.onerror = () => setIsListening(false);
+          fallbackRecognition.onerror = (fbEvent: any) => {
+            setIsListening(false);
+            const fbError = String(fbEvent.error || '').toLowerCase();
+            if (fbError === 'network') {
+              alert("Mwebane, voice input requires an internet connection to transcribe. Since Bulela is built for offline networks, please type your question or snap a photo!");
+            }
+          };
           fallbackRecognition.onend = () => setIsListening(false);
           
           fallbackRecognition.start();
         } catch (retryErr) {
-          console.error("Fallback speech recognition also failed:", retryErr);
-          alert("Voice input service is temporarily unavailable. Please type your message instead.");
+          console.error("Fallback speech recognition failed:", retryErr);
+          setIsListening(false);
         }
       } else {
-        // For other errors, try with fallback locale
-        console.warn(`Speech recognition error: ${event.error}, retrying with en-US locale`);
+        // For other unrecognized errors, attempt en-US fallback as a safety measure
+        console.warn(`Speech recognition event error: ${event.error}, falling back to en-US...`);
         try {
           const fallbackRecognition = new SpeechRecognition();
           fallbackRecognition.lang = 'en-US';
@@ -625,8 +678,8 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
           
           fallbackRecognition.start();
         } catch (retryErr) {
-          console.error("Fallback speech recognition also failed:", retryErr);
-          alert("Voice input is currently unavailable. Please type your message instead.");
+          console.error("Catch-all fallback speech recognition failed:", retryErr);
+          setIsListening(false);
         }
       }
     };
@@ -907,6 +960,8 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isEncouragement = m.role === 'model' && m.content.length > 200;
+                const isCurrentlySpeakingThis = isSpeaking && currentlySpeakingIndex === i;
+
                 return (
                   <motion.div key={i} initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
                     <div className={`flex gap-3 sm:gap-4 max-w-[95%] sm:max-w-2xl ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -914,6 +969,11 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
                         {m.role === 'user' ? <UserIcon size={18} /> : <div className="text-sm font-black">B</div>}
                       </div>
                       <div className={`rounded-3xl p-4 sm:p-6 shadow-sm border transition-all ${m.role === 'user' ? 'bg-blue-600 text-white border-blue-500 rounded-tr-none' : isEncouragement ? 'bg-green-50 border-green-100 text-slate-800 rounded-tl-none shadow-green-100/50' : 'bg-white border-slate-100 text-slate-800 rounded-tl-none shadow-slate-100/20'}`}>
+                        {m.image && (
+                          <div className="mb-3 rounded-2xl overflow-hidden border border-slate-200 shadow-sm max-w-xs bg-slate-50">
+                            <img src={m.image} alt="Math problem context" className="w-full h-auto object-cover max-h-48" />
+                          </div>
+                        )}
                         {isEncouragement && <div className="text-[10px] font-black text-green-700 uppercase mb-3 flex items-center gap-1.5 tracking-widest border-b border-green-200/50 pb-2"><BookOpen size={12} /> Cultural Insight / Analogy</div>}
                         <div className={`markdown-body text-sm sm:text-[15px] leading-relaxed ${m.role === 'user' ? 'prose-invert font-medium' : ''}`}>
                           <ReactMarkdown
@@ -922,14 +982,21 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
                             components={{
                               code(props) {
                                 const { className, children, ...rest } = props;
-                                const match = /language-(\w+)/.exec(className || '');
-                                if (match && match[1] === 'svg') {
-                                  return (
-                                    <div 
-                                      className="my-4 flex justify-center bg-slate-50 p-4 rounded-2xl border border-slate-100 overflow-x-auto shadow-inner"
-                                      dangerouslySetInnerHTML={{ __html: String(children) }}
-                                    />
-                                  );
+                                const match = /language-([\w-]+)/.exec(className || '');
+                                if (match) {
+                                  if (match[1] === 'svg') {
+                                    return (
+                                      <div 
+                                        className="my-4 flex justify-center bg-slate-50 p-4 rounded-2xl border border-slate-100 overflow-x-auto shadow-inner"
+                                        dangerouslySetInnerHTML={{ __html: String(children) }}
+                                      />
+                                    );
+                                  }
+                                  if (match[1] === 'javascript-chart' || match[1] === 'chart') {
+                                    return (
+                                      <JSChart code={String(children)} />
+                                    );
+                                  }
                                 }
                                 return <code className={className} {...rest}>{children}</code>;
                               }
@@ -938,6 +1005,33 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
                             {m.content}
                           </ReactMarkdown>
                         </div>
+                        {m.role === 'model' && (
+                          <div className="flex items-center justify-between border-t border-slate-100 mt-3 pt-2.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ba Yama Step Explanation</span>
+                            <button
+                              type="button"
+                              onClick={() => speak(m.content, i)}
+                              className={`text-xs font-bold flex items-center gap-1.5 px-3 py-1 rounded-xl transition-all ${
+                                isCurrentlySpeakingThis
+                                  ? 'bg-green-700 text-white shadow-sm'
+                                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 bg-slate-50 border border-slate-200/60'
+                              }`}
+                              title="Listen to Ba Yama"
+                            >
+                              {isCurrentlySpeakingThis ? (
+                                <>
+                                  <Volume2 size={14} className="animate-bounce" />
+                                  <span>Stop</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 size={14} />
+                                  <span>Listen</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>
@@ -957,11 +1051,24 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
 
         <div className="absolute bottom-0 left-0 w-full p-4 sm:p-8 bg-gradient-to-t from-white via-white to-transparent pointer-events-none z-20">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
+            {isListening && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center justify-between text-xs font-bold shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-600 rounded-full animate-ping" />
+                  <span>Listening to your math question... Speak clearly into your microphone!</span>
+                </div>
+                <button type="button" onClick={() => setIsListening(false)} className="text-red-500 hover:text-red-800 p-1">
+                  <X size={16} />
+                </button>
+              </motion.div>
+            )}
             <form onSubmit={handleSendMessage} className="relative flex items-end gap-3 sm:gap-4">
               <div className="relative flex-1 group">
-                <textarea rows={1} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} disabled={isLoading} placeholder="Type your math problem..." className="w-full bg-white border-2 border-slate-200 rounded-[2rem] px-6 py-4 pr-32 text-sm sm:text-base focus:outline-none focus:ring-8 focus:ring-green-500/5 transition-all placeholder:text-slate-400 min-w-0 shadow-2xl resize-none max-h-40 overflow-y-auto" />
-                <div className="absolute right-3 bottom-3 flex items-center gap-1 sm:gap-2">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Upload Photo" className="p-2 sm:p-2.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all focus:outline-none focus:ring-2 focus:ring-green-500" title="Upload Photo"><Camera size={18} /></button>
+                <textarea rows={1} value={input} onChange={(e) => { setInput(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px`; }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} disabled={isLoading} placeholder="Type your math problem or upload a notebook photo..." className="w-full bg-white border-2 border-slate-200 rounded-[2rem] px-6 py-4 pr-40 text-sm sm:text-base focus:outline-none focus:ring-8 focus:ring-green-500/5 transition-all placeholder:text-slate-400 min-w-0 shadow-2xl resize-none max-h-40 overflow-y-auto" />
+                <div className="absolute right-3 bottom-3 flex items-center gap-1 sm:gap-1.5">
+                  <button type="button" onClick={() => cameraInputRef.current?.click()} aria-label="Snap Camera Photo" className="p-2 sm:p-2.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all focus:outline-none focus:ring-2 focus:ring-green-500" title="Snap Camera Photo"><Camera size={18} /></button>
+                  <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleCameraUpload} aria-label="Camera image upload input" />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Upload Notebook Photo" className="p-2 sm:p-2.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all focus:outline-none focus:ring-2 focus:ring-green-500" title="Upload Notebook File"><ImageIcon size={18} /></button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageUpload} aria-label="Image upload input" />
                   <button type="button" onClick={startListening} aria-label="Voice Input" aria-pressed={isListening} className={`p-2 sm:p-2.5 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-green-500 ${isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`} title="Speak Problem"><Mic size={18} /></button>
                   <button type="submit" disabled={!input.trim() || isLoading} aria-label="Send message" className="bg-green-700 text-white p-2 sm:p-2.5 rounded-full hover:bg-green-800 transition-all disabled:opacity-30 shadow-lg shadow-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"><Send size={18} /></button>
@@ -972,7 +1079,7 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
               <p className="text-[9px] sm:text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em]">Grade 8 & 9 Math / Zambian National Curriculum</p>
               <div className="flex gap-4">
                 <button onClick={() => setIsCanvasOpen(true)} aria-label="Open math canvas for handwriting" className="text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 text-slate-400 hover:text-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1"><Pencil size={12} /> Scholarly Script</button>
-                <button onClick={isSpeaking ? stopSpeaking : () => speak(messages[messages.length - 1].content.replace(/[*#$]/g, ''))} aria-label={isSpeaking ? "Stop narration" : "Read answer aloud"} aria-pressed={isSpeaking} className={`text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1 ${isSpeaking ? 'text-green-600' : 'text-slate-400 hover:text-slate-500'}`}>{isSpeaking ? <Volume2 size={12} className="animate-bounce" /> : <VolumeX size={12} />} {isSpeaking ? 'Stop Narrator' : 'Vocalize Answer'}</button>
+                <button onClick={() => speak(messages[messages.length - 1]?.content || "")} aria-label={isSpeaking ? "Stop narration" : "Read answer aloud"} aria-pressed={isSpeaking} className={`text-[10px] font-bold uppercase tracking-widest transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2 py-1 ${isSpeaking ? 'text-green-600' : 'text-slate-400 hover:text-slate-500'}`}>{isSpeaking ? <Volume2 size={12} className="animate-bounce" /> : <VolumeX size={12} />} {isSpeaking ? 'Stop Narrator' : 'Vocalize Latest'}</button>
               </div>
             </div>
           </div>
@@ -986,7 +1093,14 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
           )}
           {isCanvasOpen && (
             <ErrorBoundary>
-              <MathCanvas onClose={() => setIsCanvasOpen(false)} onRecognize={(eq) => { setIsCanvasOpen(false); handleSendMessage(undefined, eq); }} />
+              <MathCanvas 
+                onClose={() => setIsCanvasOpen(false)} 
+                onRecognize={(eq) => { setIsCanvasOpen(false); handleSendMessage(undefined, eq); }}
+                onRecognizeImage={(base64Img) => { 
+                  setIsCanvasOpen(false); 
+                  handleSendMessage(undefined, `[HANDWRITTEN_CANVAS] Mwaice, I've drawn a handwritten math problem on my scratchpad. Please analyze the equation in this drawing!`, base64Img); 
+                }} 
+              />
             </ErrorBoundary>
           )}
           {isTeacherDashboardOpen && (
@@ -1020,14 +1134,21 @@ function BulelaMain({ user, signOut, devMode }: BulelaProps) {
                     components={{
                       code(props) {
                         const { className, children, ...rest } = props;
-                        const match = /language-(\w+)/.exec(className || '');
-                        if (match && match[1] === 'svg') {
-                          return (
-                            <div 
-                              className="my-4 flex justify-center bg-white p-4 rounded-2xl border border-slate-100 overflow-x-auto shadow-inner"
-                              dangerouslySetInnerHTML={{ __html: String(children) }}
-                            />
-                          );
+                        const match = /language-([\w-]+)/.exec(className || '');
+                        if (match) {
+                          if (match[1] === 'svg') {
+                            return (
+                              <div 
+                                className="my-4 flex justify-center bg-white p-4 rounded-2xl border border-slate-100 overflow-x-auto shadow-inner"
+                                dangerouslySetInnerHTML={{ __html: String(children) }}
+                              />
+                            );
+                          }
+                          if (match[1] === 'javascript-chart' || match[1] === 'chart') {
+                            return (
+                              <JSChart code={String(children)} />
+                            );
+                          }
                         }
                         return <code className={className} {...rest}>{children}</code>;
                       }

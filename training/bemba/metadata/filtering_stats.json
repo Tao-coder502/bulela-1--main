@@ -1,0 +1,20 @@
+{
+  "original_cleaned_rows": 34996,
+  "removed_religious_rows": 30693,
+  "remaining_general_rows": 4303,
+  "retention_rate_pct": 12.3,
+  "discovered_sources": {
+    "bible": 30693,
+    "ai-dictionary": 3884,
+    "storybook": 416,
+    "community": 2,
+    "moe": 1
+  },
+  "discovered_domains": {
+    "religion": 30693,
+    "education": 4303
+  },
+  "reasons_breakdown": {
+    "bible / religion": 30693
+  }
+}

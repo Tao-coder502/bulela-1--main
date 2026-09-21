@@ -70,10 +70,10 @@ export default function TeacherDashboard({ onClose }: { onClose: () => void }) {
               {/* Stats Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                  { label: "Active Students", value: data.stats.total_students, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-                  { label: "Class Average", value: `${Math.round(data.stats.class_average)}%`, icon: BarChart3, color: "text-green-600", bg: "bg-green-50" },
-                  { label: "Total Points", value: data.stats.total_points_earned.toLocaleString(), icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
-                  { label: "Modules Finished", value: data.stats.total_modules_completed, icon: Check, color: "text-purple-600", bg: "bg-purple-50" }
+                  { label: "Active Students", value: data.stats.total_students || 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+                  { label: "Class Average", value: `${Math.round(data.stats.class_average || 0)}%`, icon: BarChart3, color: "text-green-600", bg: "bg-green-50" },
+                  { label: "Total Points", value: (data.stats.total_points_earned || 0).toLocaleString(), icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
+                  { label: "Modules Finished", value: data.stats.total_modules_completed || 0, icon: Check, color: "text-purple-600", bg: "bg-purple-50" }
                 ].map((stat, i) => (
                   <div key={i} className="p-6 rounded-[2rem] bg-slate-50 border border-slate-100 group hover:border-slate-200 transition-all">
                     <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform`}>

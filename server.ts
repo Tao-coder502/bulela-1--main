@@ -61,7 +61,7 @@ const logger = pino({
 const OLLAMA_BASE_URL = process.env.OLLAMA_URL || `http://${SERVER_IP}:11434`;
 const OLLAMA_GENERATE_URL = `${OLLAMA_BASE_URL}/api/generate`;
 const OLLAMA_HEALTH_URL = `${OLLAMA_BASE_URL}/api/tags`;
-const OLLAMA_MODEL = "gemma4:e4b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "bayama-tutor:latest";
 const PORT = 3000;
 
 const ZAMBIAN_MATH_PERSONA = `
@@ -169,11 +169,12 @@ interface UpdateTopicRequest {
  */
 function searchRAG(query: string, limit: number = 5): any[] {
   try {
-    // Sanitize query for FTS5
-    const sanitizedQuery = query.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t).map(t => `${t}*`).join(' ');
-    
-    if (!sanitizedQuery) return [];
+    const rawTokens = query.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t && t.length > 1);
+    if (rawTokens.length === 0) return [];
 
+    // FTS5 OR query ensures high recall across multi-word queries with rank sorting
+    const ftsQuery = rawTokens.map(t => `${t}*`).join(' OR ');
+    
     // Try FTS5 search first
     let results: any[] = [];
     try {
@@ -194,28 +195,36 @@ function searchRAG(query: string, limit: number = 5): any[] {
         WHERE textbook_fts MATCH ?
         ORDER BY rank
         LIMIT ?
-      `).all(sanitizedQuery, limit);
+      `).all(ftsQuery, limit);
     } catch (ftsError) {
       logger.warn({ error: ftsError }, "FTS5 search failed, falling back to LIKE");
     }
 
-    // Fallback to LIKE search if FTS5 fails or returns no results
+    // Fallback to LIKE search across key tokens if FTS5 fails or returns no results
     if (results.length === 0) {
-      results = db.prepare(`
-        SELECT 
-          id,
-          source,
-          topic,
-          chapter,
-          section,
-          content,
-          page_number,
-          difficulty_level,
-          learning_objectives
-        FROM textbook_content
-        WHERE content LIKE ? OR topic LIKE ? OR section LIKE ?
-        LIMIT ?
-      `).all(`%${query}%`, `%${query}%`, `%${query}%`, limit);
+      const topTokens = rawTokens.slice(0, 3);
+      for (const token of topTokens) {
+        const likeMatches = db.prepare(`
+          SELECT 
+            id,
+            source,
+            topic,
+            chapter,
+            section,
+            content,
+            page_number,
+            difficulty_level,
+            learning_objectives
+          FROM textbook_content
+          WHERE content LIKE ? OR topic LIKE ? OR section LIKE ?
+          LIMIT ?
+        `).all(`%${token}%`, `%${token}%`, `%${token}%`, limit);
+
+        if (likeMatches.length > 0) {
+          results.push(...likeMatches);
+          break;
+        }
+      }
     }
 
     return results;
@@ -247,9 +256,10 @@ function buildRAGContext(results: any[]): string {
 }
 
 // --- Prompt Engineering ---
-function formatGemmaPrompt(userMessage: string, topicContext: string, history: ChatRequest['history'], userName: string = "Taona") {
+function formatGemmaPrompt(userMessage: string, topicContext: string, history: ChatRequest['history'], userName: string = "Taona", masteryLevel: number = 1) {
+  const difficulty = masteryLevel === 1 ? "Basic (Introductory)" : masteryLevel === 2 ? "Intermediate (Application)" : "Advanced (Problem Solving)";
   let personalizedPersona = ZAMBIAN_MATH_PERSONA.replace(/{{userName}}/g, userName);
-  let prompt = `<start_of_turn>user\nSYSTEM: ${personalizedPersona}\nCONTEXT: ${topicContext}\n`;
+  let prompt = `<start_of_turn>user\nSYSTEM: ${personalizedPersona}\nCONTEXT: ${topicContext}\nSTUDENT MASTERY LEVEL: Level ${masteryLevel} (${difficulty})\n`;
   
   // MOOD & FRICTION DETECTION (The Bridge Technique)
   const frictionKeywords = {
@@ -426,10 +436,11 @@ async function startServer() {
   app.post<{ Body: { question: string } }>('/api/ask', async (request, reply) => {
     const { question } = request.body;
     
-    // 1. SEARCH: Query the dictionary using FTS5 (Sanitized)
+    // 1. SEARCH: Query the dictionary using FTS5 (Sanitized OR match)
     let searchResults: any[] = [];
     try {
-      const sanitizedQuery = question.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t).map(t => `${t}*`).join(' ');
+      const rawTokens = question.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t && t.length > 1);
+      const sanitizedQuery = rawTokens.map(t => `${t}*`).join(' OR ');
       
       if (sanitizedQuery) {
         searchResults = db.prepare(`
@@ -759,7 +770,8 @@ async function startServer() {
       }
 
       // 2. Dictionary search for definitions
-      const sanitizedFts = message.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t).map(t => `${t}*`).join(' ');
+      const rawTokens = message.replace(/[^\w\s]/g, ' ').trim().split(/\s+/).filter(t => t && t.length > 1);
+      const sanitizedFts = rawTokens.map(t => `${t}*`).join(' OR ');
       if (sanitizedFts) {
         const dictionaryMatches: any[] = db.prepare(`SELECT term, definition FROM dictionary_fts WHERE dictionary_fts MATCH ? LIMIT 2`).all(sanitizedFts);
         if (dictionaryMatches.length > 0) {
@@ -778,7 +790,21 @@ async function startServer() {
       logger.error({ error: dbErr }, "RAG failed");
     }
 
-    const fullPrompt = formatGemmaPrompt(message, topicContext, history, userName);
+    // 4. Fetch student's current mastery level from learner model
+    let masteryLevel = 1;
+    if (topicId) {
+      try {
+        const progress: any = db.prepare('SELECT mastery_level FROM user_progress WHERE topic_id = ? AND user_id IS ?').get(topicId, userId || null);
+        if (progress?.mastery_level) {
+          masteryLevel = progress.mastery_level;
+        }
+      } catch (err) {
+        logger.warn({ error: err }, "Could not fetch user mastery level for chat");
+      }
+    }
+
+    const fullPrompt = formatGemmaPrompt(message, topicContext, history, userName, masteryLevel);
+    const startTime = Date.now();
 
     try {
       const requestBody: any = {
@@ -794,7 +820,8 @@ async function startServer() {
 
       // Add image to Ollama request if provided for vision processing
       if (image) {
-        requestBody.images = [image];
+        const rawBase64 = image.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+        requestBody.images = [rawBase64];
       }
 
       let response = await fetch(OLLAMA_GENERATE_URL, {
@@ -823,12 +850,9 @@ async function startServer() {
       if (!data || !data.response) throw new Error("Invalid model response format");
 
       const fullModelResponse = data.response;
+      const responseTime = (Date.now() - startTime) / 1000;
 
       // Handle the response as a single blob for client-side stability if stream is disabled
-      // Note: The frontend expects a stream in current implementation, 
-      // but to comply with "Forces Ollama to return a single, complete JSON object", 
-      // we must send it as a single chunk if we used stream:false.
-      
       reply.raw.writeHead(200, {
         'Content-Type': 'text/plain; charset=utf-8',
       });
@@ -840,7 +864,22 @@ async function startServer() {
         db.prepare('INSERT INTO chat_history (topic_id, user_id, role, content) VALUES (?, ?, ?, ?)').run(topicId, userId || null, 'user', message);
         db.prepare('INSERT INTO chat_history (topic_id, user_id, role, content) VALUES (?, ?, ?, ?)').run(topicId, userId || null, 'model', fullModelResponse);
       }
+
+      // Record engagement event in performance_logs (Learner Model update)
+      try {
+        db.prepare('INSERT INTO performance_logs (user_id, topic_id, type, response_time, success_flag) VALUES (?, ?, ?, ?, ?)')
+          .run(userId || null, topicId || 'general', 'chat', responseTime, 1);
+      } catch (logErr) {
+        logger.warn({ error: logErr }, "Failed to log chat performance event");
+      }
     } catch (error: any) {
+      const responseTime = (Date.now() - startTime) / 1000;
+      try {
+        db.prepare('INSERT INTO performance_logs (user_id, topic_id, type, response_time, success_flag) VALUES (?, ?, ?, ?, ?)')
+          .run(userId || null, topicId || 'general', 'chat', responseTime, 0);
+      } catch (logErr) {
+        // ignore
+      }
       logger.error({ error }, "Ollama Chat failed");
       return reply.status(500).send({ error: "Ba Yama's brain is offline. Please ensure Ollama is running locally." });
     }
@@ -876,8 +915,8 @@ async function startServer() {
       const stats = db.prepare(`
         SELECT 
           COUNT(DISTINCT user_id) as total_students,
-          AVG(score) as class_average,
-          SUM(points) as total_points_earned,
+          COALESCE(AVG(score), 0) as class_average,
+          COALESCE(SUM(points), 0) as total_points_earned,
           COUNT(*) as total_modules_completed
         FROM user_progress
       `).get();

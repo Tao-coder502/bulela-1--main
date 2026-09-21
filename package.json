@@ -8,9 +8,9 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
-    "start": "node server.ts",
+    "start": "tsx server.ts",
     "clean": "rm -rf dist",
-    "generate-dataset": "tsx scripts/extract_dataset.ts",
+    "generate-dataset": "tsx scripts/pipeline/build_dataset.ts",
     "lint": "tsc --noEmit",
     "ingest-rag": "tsx ingest-rag-optimized.ts",
     "ingest": "tsx ingest-rag-optimized.ts",
@@ -45,7 +45,8 @@
     "svix": "^1.93.0",
     "undici": "^8.3.0",
     "vite": "^6.2.0",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
@@ -55,7 +56,6 @@
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

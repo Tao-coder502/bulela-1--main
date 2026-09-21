@@ -158,17 +158,12 @@ export function initDb() {
     console.warn("RAG FTS5 might not be supported. Search will use 'LIKE'.");
   }
 
-  const existing = db.prepare('SELECT COUNT(*) as count FROM topics').get() as { count: number };
-  if (existing.count === 0) {
-    const topicsFromTextbook = extractTopicsFromTextbook();
-    
-    const insertStmt = db.prepare('INSERT OR IGNORE INTO topics (id, title, prompt) VALUES (?, ?, ?)');
-    const seedTransaction = db.transaction((data) => {
-      for (const topic of data) insertStmt.run(topic.id, topic.title, topic.prompt);
-    });
-    seedTransaction(topicsFromTextbook);
-    console.log(`Database seeded with ${topicsFromTextbook.length} topics from textbook.`);
-  }
+  const topicsFromTextbook = extractTopicsFromTextbook();
+  const insertStmt = db.prepare('INSERT OR IGNORE INTO topics (id, title, prompt) VALUES (?, ?, ?)');
+  const seedTransaction = db.transaction((data) => {
+    for (const topic of data) insertStmt.run(topic.id, topic.title, topic.prompt);
+  });
+  seedTransaction(topicsFromTextbook);
 
   // Seed dictionary from JSON
   seedDictionary();
@@ -183,7 +178,6 @@ function extractTopicsFromTextbook(): Array<{ id: string; title: string; prompt:
   
   try {
     if (!fs.existsSync(metaPath)) {
-      console.warn("Textbook meta.json not found, using fallback topics.");
       return getFallbackTopics();
     }
 
@@ -191,7 +185,7 @@ function extractTopicsFromTextbook(): Array<{ id: string; title: string; prompt:
     const tableOfContents = metaData.table_of_contents || [];
     
     // Extract topics that match the pattern "TOPIC X: YYY"
-    const topics = tableOfContents
+    const extractedTopics = tableOfContents
       .filter((entry: any) => entry.title && /^TOPIC \d+:/i.test(entry.title))
       .map((entry: any, index: number) => {
         const title = entry.title.trim();
@@ -205,12 +199,14 @@ function extractTopicsFromTextbook(): Array<{ id: string; title: string; prompt:
         };
       });
 
-    if (topics.length === 0) {
-      console.warn("No topics found in textbook meta.json, using fallback topics.");
-      return getFallbackTopics();
-    }
+    // Merge with full syllabus topics to guarantee complete Grade 8/9 coverage
+    const fallbackList = getFallbackTopics();
+    const mergedMap = new Map<string, { id: string; title: string; prompt: string }>();
+    
+    for (const t of fallbackList) mergedMap.set(t.id, t);
+    for (const t of extractedTopics) mergedMap.set(t.id, t);
 
-    return topics;
+    return Array.from(mergedMap.values());
   } catch (e) {
     console.error("Failed to extract topics from textbook:", e);
     return getFallbackTopics();
@@ -219,9 +215,21 @@ function extractTopicsFromTextbook(): Array<{ id: string; title: string; prompt:
 
 function getFallbackTopics(): Array<{ id: string; title: string; prompt: string }> {
   return [
-    { id: 'algebra', title: "Algebra", prompt: "Explain Algebra using Zambian cultural context and examples. Level: Grade 8/9." },
-    { id: 'matrices', title: "Matrices", prompt: "Explain Matrices using Zambian cultural context and examples. Level: Grade 8/9." },
-    { id: 'variation', title: "Variation", prompt: "Explain Variation using Zambian cultural context and examples. Level: Grade 8/9." },
+    { id: 'sets', title: "Sets & Set Operations", prompt: "Explain Sets, Venn diagrams, union, intersection, and complement using Zambian market analogies. Level: Grade 8/9." },
+    { id: 'algebra', title: "Algebraic Expressions & Equations", prompt: "Explain simplifying expressions, expanding brackets, and solving algebraic equations. Level: Grade 8/9." },
+    { id: 'matrices', title: "Matrices & Determinants", prompt: "Explain matrix addition, scalar multiplication, and finding determinants of 2x2 matrices. Level: Grade 8/9." },
+    { id: 'linear-equations', title: "Linear Equations & Inequalities", prompt: "Explain solving linear equations and graphing inequalities on a number line. Level: Grade 8/9." },
+    { id: 'relations-functions', title: "Relations, Mappings & Functions", prompt: "Explain domain, range, ordered pairs, and functional mappings. Level: Grade 8/9." },
+    { id: 'coordinate-geometry', title: "Coordinate Geometry & Graphs", prompt: "Explain plotting Cartesian coordinates, gradients, and straight line equations. Level: Grade 8/9." },
+    { id: 'mensuration', title: "Mensuration & Geometric Figures", prompt: "Explain perimeter, area, surface area, and volume of 2D and 3D shapes. Level: Grade 8/9." },
+    { id: 'trigonometry', title: "Trigonometry & Right-Angled Triangles", prompt: "Explain Pythagoras' theorem and basic trigonometric ratios (sine, cosine, tangent). Level: Grade 8/9." },
+    { id: 'statistics', title: "Statistics & Data Representation", prompt: "Explain mean, median, mode, frequency tables, and bar charts. Level: Grade 8/9." },
+    { id: 'probability', title: "Probability & Experimental Outcomes", prompt: "Explain calculating theoretical and experimental probability. Level: Grade 8/9." },
+    { id: 'commercial-arithmetic', title: "Commercial & Social Arithmetic", prompt: "Explain simple interest, profit and loss, discount, currency conversions, and budgets. Level: Grade 8/9." },
+    { id: 'number-bases', title: "Number Bases & Binary Arithmetic", prompt: "Explain converting between Base 10, Base 2 (binary), and other bases. Level: Grade 8/9." },
+    { id: 'ratio-proportion', title: "Ratio, Rate & Proportion", prompt: "Explain direct and inverse proportion and sharing quantities by ratios. Level: Grade 8/9." },
+    { id: 'variation', title: "Variation (Direct & Inverse)", prompt: "Explain direct and inverse variation with real-world Zambian examples. Level: Grade 8/9." },
+    { id: 'vectors', title: "Vectors in Two Dimensions", prompt: "Explain vector notation, column vectors, magnitude, and vector addition. Level: Grade 8/9." },
   ];
 }
 

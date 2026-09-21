@@ -1,0 +1,15 @@
+{
+  "random_seed": 42,
+  "input_general_records": 4303,
+  "held_out_evaluation_records": 500,
+  "training_parallel_records": 3803,
+  "generated_instruction_examples": 7606,
+  "tasks": {
+    "english_to_bemba": 3803,
+    "bemba_to_english": 3803
+  },
+  "leakage_verification": {
+    "overlap_count": 0,
+    "zero_leakage_guaranteed": true
+  }
+}

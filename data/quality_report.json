@@ -1,0 +1,129 @@
+{
+  "manifest_version": "2.0.0-bulela-canonical",
+  "timestamp": "2026-09-03T14:38:28.945Z",
+  "train_split_count": 2173,
+  "val_split_count": 315,
+  "test_split_count": 286,
+  "leakage_check_passed": true,
+  "quality_metrics": {
+    "average_quality_score": 0.9607245854362102,
+    "rejection_rate_percent": 0,
+    "deduplication_dropped": 0
+  },
+  "sample_inspections": {
+    "teaching_sample": {
+      "id": "tutor-teach-1",
+      "interaction_type": "teaching",
+      "subject": "mathematics",
+      "topic": "Zambian Mathematical Terms & Glossaries",
+      "instruction": "Teach me about Set for Grade 9 Mathematics.",
+      "output": "Iyee, my champion! Set is an essential part of our mathematics curriculum.\n\nA collection of well-defined objects or elements. Think of it like a basket of fruits from Chisokone market.\n\n**Everyday Analogy**: Think of it like this: A collection of well-defined objects or elements. Think of it like a basket of fruits from Chisokone market.\n\nLet us make sure we understand the foundation before jumping into complex equations. What part would you like to try first?",
+      "negative_response": "Here is Set: A collection of well-defined objects or elements. Think of it like a basket of fruits from Chisokone. You seem to be in a flow state.",
+      "quality_score": 0.95,
+      "checks": {
+        "source_grounded": true,
+        "language_valid": true,
+        "answer_correct": true,
+        "pedagogically_useful": true,
+        "non_duplicate": true,
+        "format_valid": true
+      },
+      "source": {
+        "document": "dictionary.json",
+        "confidence": 1
+      },
+      "tags": [
+        "teaching",
+        "concept_explanation",
+        "zambian_analogy",
+        "grade9"
+      ]
+    },
+    "correction_sample": {
+      "id": "tutor-correct-5",
+      "interaction_type": "correction",
+      "subject": "mathematics",
+      "topic": "How to use this book",
+      "instruction": "I tried solving this problem: \"Worked examples give an example with a model answer that shows how to do a calculation step by step.\", but my answer was 0. Where did I go wrong?",
+      "output": "Let us inspect the problem together, step by step:\n\n1. **First Step**: Identify known values and target variable.\n2. **Next Step**: Apply the governing mathematical formula or rule.\n\n**Hint to fix it**: Remember the order of operations and step-by-step simplification.\n\nLook over your working again. Did you remember to balance both sides? Give it another attempt!",
+      "quality_score": 1,
+      "checks": {
+        "source_grounded": true,
+        "language_valid": true,
+        "answer_correct": true,
+        "pedagogically_useful": true,
+        "non_duplicate": true,
+        "format_valid": true
+      },
+      "source": {
+        "document": "math-grade9-textbook.json",
+        "page": 6,
+        "section": "How to use this book",
+        "confidence": 0.95
+      },
+      "tags": [
+        "correction",
+        "worked_example",
+        "guided_review"
+      ]
+    },
+    "hint_sample": {
+      "id": "tutor-hint-2",
+      "interaction_type": "hint",
+      "subject": "mathematics",
+      "topic": "Starter activity",
+      "instruction": "Can you give me a hint for solving: \"The square of a number multiply a number by For example, the square The expression 42 is eq the square of 4. We say\"? Please don't give me the final answer yet.",
+      "output": "Sure mukwai! I will give you a guiding clue rather than the answer, so you build that problem-solving muscle:\n\n💡 **Guiding Clue**: Remember the order of operations and step-by-step simplification.\n\nAsk yourself: What is the relationship between the known numbers and the unknown variable? Take that first step and tell me what you get!",
+      "negative_response": "The answer is The square of a number multiply a number by For example, the square The expression 42 is eq the square of 4. We say. Done.",
+      "quality_score": 1,
+      "checks": {
+        "source_grounded": true,
+        "language_valid": true,
+        "answer_correct": true,
+        "pedagogically_useful": true,
+        "non_duplicate": true,
+        "format_valid": true
+      },
+      "source": {
+        "document": "math-grade9-textbook.json",
+        "page": 6,
+        "section": "Starter activity",
+        "confidence": 0.95
+      },
+      "tags": [
+        "hint",
+        "socratic",
+        "scaffolding"
+      ]
+    },
+    "sentiment_sample": {
+      "id": "tutor-sent-1",
+      "interaction_type": "sentiment_adaptive",
+      "subject": "mathematics",
+      "topic": "Emotional & Pedagogical Adaptation",
+      "learner_state": "FRUSTRATION",
+      "response_strategy": "simplify_and_encourage",
+      "instruction": "I really don't understand this math, it is too hard and I feel stuck!",
+      "output": "Paka munya, kwiya mbeba! Take a deep breath, my champion. Mathematics is not about rushing; it is about taking small, confident steps. Let us step back from the big formula. Tell me: what is the very first number given in the problem? Let us start with just that one.",
+      "negative_response": "You are experiencing frustration. Try harder.",
+      "quality_score": 1,
+      "checks": {
+        "source_grounded": true,
+        "language_valid": true,
+        "answer_correct": true,
+        "pedagogically_useful": true,
+        "non_duplicate": true,
+        "format_valid": true
+      },
+      "source": {
+        "document": "persona_guidance",
+        "confidence": 1
+      },
+      "tags": [
+        "sentiment_adaptive",
+        "frustration",
+        "encouragement"
+      ]
+    }
+  }
+}

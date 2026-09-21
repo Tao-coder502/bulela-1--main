@@ -1,0 +1,60 @@
+{
+  "dataset_name": "GiJoeHansFranz/Liseli",
+  "configuration": "parallel-bemba",
+  "split": "train",
+  "retrieval_date_utc": "2026-09-11T12:18:43.784642+00:00",
+  "row_count": 35140,
+  "columns": [
+    "english",
+    "translation",
+    "language",
+    "domain",
+    "source",
+    "concept_id",
+    "sentence_id"
+  ],
+  "features": {
+    "english": "Value('string')",
+    "translation": "Value('string')",
+    "language": "Value('string')",
+    "domain": "Value('string')",
+    "source": "Value('string')",
+    "concept_id": "Value('string')",
+    "sentence_id": "Value('string')"
+  },
+  "license": "CC-BY-SA-4.0",
+  "source_url": "https://huggingface.co/datasets/GiJoeHansFranz/Liseli",
+  "files": {
+    "jsonl": "training\\bemba\\raw\\parallel-bemba\\raw_train.jsonl",
+    "parquet": "training\\bemba\\raw\\parallel-bemba\\raw_train.parquet"
+  },
+  "sample_records": [
+    {
+      "english": "dry",
+      "translation": "taileloka",
+      "language": "bemba",
+      "domain": "education",
+      "source": "ai-dictionary",
+      "concept_id": "dict-bemba",
+      "sentence_id": "106360cf-01f0-41ba-908e-1fd89c2b52ad"
+    },
+    {
+      "english": "cold",
+      "translation": "nakutalala",
+      "language": "bemba",
+      "domain": "education",
+      "source": "ai-dictionary",
+      "concept_id": "dict-bemba",
+      "sentence_id": "c4287d89-5abd-4dae-bc35-639520c6f95c"
+    },
+    {
+      "english": "look",
+      "translation": "mona",
+      "language": "bemba",
+      "domain": "education",
+      "source": "ai-dictionary",
+      "concept_id": "dict-bemba",
+      "sentence_id": "37def0f0-b125-4d21-a818-f9203b985479"
+    }
+  ]
+}

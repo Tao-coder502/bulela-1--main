@@ -72,11 +72,14 @@ export default function AnalyticsDashboard({ userId, onClose }: { userId?: strin
   const topicProgress = data.topicProgress || [];
   const history = data.history || [];
 
-  const radarData = topicProgress.map(tp => ({
-    subject: tp.topic_id.charAt(0).toUpperCase() + tp.topic_id.slice(1),
-    A: tp.score,
-    fullMark: 100,
-  }));
+  const radarData = topicProgress.map(tp => {
+    const name = tp.topic_id ? String(tp.topic_id) : 'Topic';
+    return {
+      subject: name.charAt(0).toUpperCase() + name.slice(1),
+      A: tp.score,
+      fullMark: 100,
+    };
+  });
 
   const masteryDistribution = [
     { name: 'Basic', value: topicProgress.filter(p => p.mastery_level === 1).length },
@@ -214,7 +217,9 @@ export default function AnalyticsDashboard({ userId, onClose }: { userId?: strin
                   <tbody className="divide-y divide-slate-50">
                     {topicProgress.map((tp, i) => (
                       <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 font-bold text-slate-900 pl-4">{tp.topic_id.charAt(0).toUpperCase() + tp.topic_id.slice(1)}</td>
+                        <td className="py-4 font-bold text-slate-900 pl-4">
+                          {tp.topic_id ? String(tp.topic_id).charAt(0).toUpperCase() + String(tp.topic_id).slice(1) : 'Topic'}
+                        </td>
                         <td className="py-4">
                           <div className="flex gap-1">
                             {[1, 2, 3].map(level => (

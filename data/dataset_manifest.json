@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0-bulela-canonical",
+  "generated_at": "2026-09-03T14:38:28.945Z",
+  "source_files": [
+    {
+      "filename": "data/math-grade9-textbook.json",
+      "size_bytes": 12956397,
+      "sha256": "72c34a1560b69ec378702abfaf97ec3d04af87bdd9f8bd1dc200407cecf86647"
+    },
+    {
+      "filename": "data/Mathematics 2 Teaching Module for Term 2  2026 final Submission.json",
+      "size_bytes": 2678342,
+      "sha256": "83ebccaa282b2ee0dd9af8716d13c3e1a06624362118fa00fb449438587e7c68"
+    },
+    {
+      "filename": "data/cibemba-grammar.json",
+      "size_bytes": 1661328,
+      "sha256": "e2b0068beb223c978a623ccde6c0c137b4348d9677b201423ed96539f4fcee08"
+    },
+    {
+      "filename": "dictionary.json",
+      "size_bytes": 1414,
+      "sha256": "ab001970818d5e9d406e52d1ce7510c8888527422b0273ebb8fba022c0f37db7"
+    },
+    {
+      "filename": "curriculum/sets.md",
+      "size_bytes": 4398,
+      "sha256": "9f09d93e847c944e27cfe53d29c24e775d405ed537d54d01fcae392a89421764"
+    }
+  ],
+  "counts": {
+    "knowledge": {
+      "concepts": 2417,
+      "grammar": 49,
+      "vocabulary": 32,
+      "examples": 131,
+      "exercises": 465,
+      "total": 3094
+    },
+    "tutoring": {
+      "teaching_pairs": 2099,
+      "correction_pairs": 135,
+      "hint_pairs": 131,
+      "diagnostic_pairs": 400,
+      "conversation_pairs": 5,
+      "sentiment_pairs": 4,
+      "total_train": 2173
+    },
+    "evaluation": {
+      "validation": 315,
+      "test": 286,
+      "total_eval": 601
+    },
+    "total_records": 5868
+  },
+  "quality_metrics": {
+    "average_quality_score": 0.9607245854362102,
+    "rejection_rate_percent": 0,
+    "deduplication_dropped": 0
+  }
+}

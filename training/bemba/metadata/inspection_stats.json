@@ -1,0 +1,85 @@
+{
+  "total_records": 35140,
+  "columns": [
+    "english",
+    "translation",
+    "language",
+    "domain",
+    "source",
+    "concept_id",
+    "sentence_id"
+  ],
+  "null_counts": {
+    "english": 0,
+    "translation": 0,
+    "language": 0,
+    "domain": 0,
+    "source": 0,
+    "concept_id": 0,
+    "sentence_id": 0
+  },
+  "empty_string_counts": {
+    "english": 0,
+    "translation": 0,
+    "language": 0,
+    "domain": 0,
+    "source": 0,
+    "concept_id": 0,
+    "sentence_id": 0
+  },
+  "deduplication": {
+    "unique_pairs": 34996,
+    "exact_duplicate_rows": 144,
+    "unique_english_sentences": 34855,
+    "unique_bemba_sentences": 33413
+  },
+  "length_statistics": {
+    "english_characters": {
+      "min": 2,
+      "max": 495,
+      "mean": 113.56,
+      "median": 109.0
+    },
+    "bemba_characters": {
+      "min": 2,
+      "max": 610,
+      "mean": 103.59,
+      "median": 94.0
+    },
+    "english_words": {
+      "min": 1,
+      "max": 86,
+      "mean": 21.68,
+      "median": 21.0
+    },
+    "bemba_words": {
+      "min": 1,
+      "max": 99,
+      "mean": 15.32,
+      "median": 14.0
+    }
+  },
+  "anomalies": {
+    "extremely_short_records": 3936,
+    "extremely_long_records": 0,
+    "identical_eng_and_bemba": 0,
+    "html_tags_detected": 0,
+    "extreme_length_ratio": 2281
+  },
+  "distributions": {
+    "sources": {
+      "bible": 30837,
+      "ai-dictionary": 3884,
+      "storybook": 416,
+      "community": 2,
+      "moe": 1
+    },
+    "domains": {
+      "religion": 30837,
+      "education": 4303
+    },
+    "languages": {
+      "bemba": 35140
+    }
+  }
+}
